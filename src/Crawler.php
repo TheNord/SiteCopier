@@ -3,6 +3,7 @@
 namespace App;
 
 use App\Storage\LinksStorage;
+use App\Storage\StylesStorage;
 use GuzzleHttp\Client;
 use GuzzleHttp\Promise;
 
@@ -81,6 +82,7 @@ class Crawler
 
         if ($status == 200) {
             $this->savePage($baseUri, $content);
+            $this->parseStyles($baseUri, $content);
             $this->parseLinks($baseUri, $content);
         }
     }
@@ -96,12 +98,12 @@ class Crawler
         return $res;
     }
 
-    public function savePage($uri, $content)
+    public function savePage($uri, $content, $type = 'page')
     {
         $url = $this->parseUrl($uri);
         $path = $this->parsePath($url['path']);
 
-        print 'Start saving page: ' . $uri . PHP_EOL;
+        print 'Start saving ' . $type . ' : ' . $uri . PHP_EOL;
 
 
 
@@ -120,13 +122,19 @@ class Crawler
 
         $name = $fileName ?: 'index';
 
-        if (!preg_match('/\.html/', $name)) {
-            $name = $name . '.html';
+        if ($type == 'page') {
+            if (!preg_match('/\.html/', $name)) {
+                $name = $name . '.html';
+            }
+
+            LinksStorage::storeProcessed($uri);
+        }
+
+        if ($type == 'style') {
+            StylesStorage::storeProcessed($uri);
         }
 
         file_put_contents($correctPath . '/' . $name, $content);
-
-        LinksStorage::storeProcessed($uri);
     }
 
     public function parseLinks($uri, $content)
@@ -190,6 +198,36 @@ class Crawler
 
         if (count(LinksStorage::$unprocessedLinks) > 0) {
             $this->parsePage();
+        }
+    }
+
+    public function parseStyles($uri, $content)
+    {
+        print 'Start parsing styles from the page: ' . $uri . PHP_EOL;
+
+        $result = [];
+        preg_match_all('/<link\s[^>]*href=\"([^\"]*)\"/', $content, $result);
+
+        $this->saveStyles($uri, $result[1]);
+    }
+
+    public function saveStyles($uri, $styles)
+    {
+        $baseUrl = $this->parseUrl($uri);
+        $host = $baseUrl['scheme']."://".$baseUrl['host'];
+
+        foreach ($styles as $style) {
+            $path = $host . $style;
+
+            if (preg_match('/\/\//', $style)) {
+                $path = $style;
+            }
+
+            if (!in_array($path, StylesStorage::$processedStyle)) {
+                $file = file_get_contents($path);
+                $this->savePage($path, $file, 'style');
+                continue;
+            }
         }
     }
 
