@@ -2,8 +2,17 @@
 
 require __DIR__ . '/vendor/autoload.php';
 
-$url = 'http://moblog.net/latest';
+class Starter {
+    public function __construct()
+    {
+        $url = 'http://balashover.ru/';
 
-(new \App\Crawler)->start($url);
+        (new \App\Crawler)->start($url);
 
-echo PHP_EOL;
+        print 'Parsing finished.' . PHP_EOL;
+
+        var_dump(\App\Storage\LinksStorage::$unprocessedLinks);
+    }
+}
+
+(new Starter());
