@@ -105,8 +105,6 @@ class Crawler
 
         print 'Start saving ' . $type . ' : ' . $uri . PHP_EOL;
 
-
-
         // Single url (http://example.com/news/), create single file
         if (count($path) == 1) {
             $fileName = array_pop($path);
@@ -132,6 +130,10 @@ class Crawler
 
         if ($type == 'style') {
             StylesStorage::storeProcessed($uri);
+        }
+
+        if ($type == 'styleImages') {
+            StylesStorage::storeImagesProcessed($uri);
         }
 
         file_put_contents($correctPath . '/' . $name, $content);
@@ -226,6 +228,50 @@ class Crawler
             if (!in_array($path, StylesStorage::$processedStyle)) {
                 $file = file_get_contents($path);
                 $this->savePage($path, $file, 'style');
+                $this->parseStyleImage($uri, $path, $file);
+                continue;
+            }
+        }
+    }
+
+    public function parseStyleImage($uri, $path, $file)
+    {
+        print 'Start parsing images from the style: ' . $path . PHP_EOL;
+
+        preg_match_all('/url\((.*png)/', $file, $png);
+        preg_match_all('/url\((.*jpg)/', $file, $jpg);
+        preg_match_all('/url\((.*gif)/', $file, $gif);
+
+        array_shift($png);
+        array_shift($jpg);
+        array_shift($gif);
+
+        $images = array_merge($png[0], $jpg[0], $gif[0]);
+        $this->saveStyleImages($uri, $images);
+    }
+
+    public function saveStyleImages($uri, $images)
+    {
+        $baseUrl = $this->parseUrl($uri);
+        $host = $baseUrl['scheme']."://".$baseUrl['host'];
+
+        foreach ($images as $image) {
+            $path = $host . $image;
+
+            if (preg_match('/http:\/\//', $image)) {
+                $path = $image;
+                var_dump($path);
+
+            }
+
+            if (preg_match('/https:\/\//', $image)) {
+                $path = $image;
+                var_dump($path);
+            }
+
+            if (!in_array($path, StylesStorage::$images)) {
+                $file = file_get_contents($path);
+                $this->savePage($path, $file, 'styleImages');
                 continue;
             }
         }
