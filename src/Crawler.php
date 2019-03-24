@@ -150,7 +150,7 @@ class Crawler
         $links = array_values(array_unique(array_filter($result[1])));
 
         $baseUrl = $this->parseUrl($uri);
-        $host = $baseUrl['scheme']."://".$baseUrl['host'];
+        $host = $baseUrl['scheme'] . "://" . $baseUrl['host'];
 
         // Remove bad url (tel, mailto, img, etc.) and remove third-party sites links
         $filteredLinks = array_filter($links, function ($link) use ($baseUrl, $links) {
@@ -216,7 +216,7 @@ class Crawler
     public function saveStyles($uri, $styles)
     {
         $baseUrl = $this->parseUrl($uri);
-        $host = $baseUrl['scheme']."://".$baseUrl['host'];
+        $host = $baseUrl['scheme'] . "://" . $baseUrl['host'];
 
         foreach ($styles as $style) {
             $path = $host . $style;
@@ -229,6 +229,7 @@ class Crawler
                 $file = file_get_contents($path);
                 $this->savePage($path, $file, 'style');
                 $this->parseStyleImage($uri, $path, $file);
+                $this->modifyStyleImage($uri, $path, $file);
                 continue;
             }
         }
@@ -253,20 +254,18 @@ class Crawler
     public function saveStyleImages($uri, $images)
     {
         $baseUrl = $this->parseUrl($uri);
-        $host = $baseUrl['scheme']."://".$baseUrl['host'];
+        $host = $baseUrl['scheme'] . "://" . $baseUrl['host'];
 
         foreach ($images as $image) {
             $path = $host . $image;
 
             if (preg_match('/http:\/\//', $image)) {
                 $path = $image;
-                var_dump($path);
 
             }
 
             if (preg_match('/https:\/\//', $image)) {
                 $path = $image;
-                var_dump($path);
             }
 
             if (!in_array($path, StylesStorage::$images)) {
@@ -275,6 +274,18 @@ class Crawler
                 continue;
             }
         }
+    }
+
+    public function modifyStyleImage($uri, $path, $file)
+    {
+        $baseUrl = $this->parseUrl($uri);
+
+        print 'Start modify images from the style: ' . $path . PHP_EOL;
+
+        $http = preg_replace("/http:\/\/{$baseUrl['host']}\//", '../', $file);
+        $result = preg_replace("/http:\/\/{$baseUrl['host']}\//", '../', $http);
+
+        $this->savePage($path, $result, 'style');
     }
 
     public function setTimeout($milliseconds = 500)
